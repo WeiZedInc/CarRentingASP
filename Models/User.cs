@@ -10,8 +10,8 @@ namespace CarRentalSystem.Models
         [Required, EmailAddress]
         public string Email { get; set; }
 
-        [Required]
-        public string PasswordHash { get; set; }
+        // Remove Required attribute since Google users don't need a password
+        public string? PasswordHash { get; set; }
 
         [Required]
         public string FirstName { get; set; }
@@ -19,9 +19,9 @@ namespace CarRentalSystem.Models
         [Required]
         public string LastName { get; set; }
 
-        public string PhoneNumber { get; set; }
+        public string? PhoneNumber { get; set; }
 
-        public string Address { get; set; }
+        public string? Address { get; set; }
 
         [Required]
         public UserRole Role { get; set; } = UserRole.Customer;
@@ -33,9 +33,15 @@ namespace CarRentalSystem.Models
         public string? GoogleId { get; set; }
 
         // Navigation properties
-        public virtual ICollection<Document> Documents { get; set; }
-        public virtual ICollection<Booking> Bookings { get; set; }
-        public virtual ICollection<Review> Reviews { get; set; }
-        public virtual LoyaltyProgram LoyaltyProgram { get; set; }
+        public virtual ICollection<Document>? Documents { get; set; }
+        public virtual ICollection<Booking>? Bookings { get; set; }
+        public virtual ICollection<Review>? Reviews { get; set; }
+        public virtual LoyaltyProgram? LoyaltyProgram { get; set; }
+
+        // Helper method to check if user is Google user
+        public bool IsGoogleUser => !string.IsNullOrEmpty(GoogleId);
+
+        // Helper method to check if user has password (for regular login)
+        public bool HasPassword => !string.IsNullOrEmpty(PasswordHash);
     }
 }

@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CarRentingASP.Migrations
 {
     [DbContext(typeof(CarRentalDbContext))]
-    [Migration("20250519195330_Init")]
+    [Migration("20250615151829_Init")]
     partial class Init
     {
         /// <inheritdoc />
@@ -329,7 +329,6 @@ namespace CarRentingASP.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Address")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("Email")
@@ -351,11 +350,9 @@ namespace CarRentingASP.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("PasswordHash")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("PhoneNumber")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime>("RegistrationDate")
@@ -600,8 +597,7 @@ namespace CarRentingASP.Migrations
 
                     b.Navigation("Documents");
 
-                    b.Navigation("LoyaltyProgram")
-                        .IsRequired();
+                    b.Navigation("LoyaltyProgram");
 
                     b.Navigation("Reviews");
                 });

@@ -326,7 +326,6 @@ namespace CarRentingASP.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Address")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("Email")
@@ -348,11 +347,9 @@ namespace CarRentingASP.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("PasswordHash")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("PhoneNumber")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime>("RegistrationDate")
@@ -597,8 +594,7 @@ namespace CarRentingASP.Migrations
 
                     b.Navigation("Documents");
 
-                    b.Navigation("LoyaltyProgram")
-                        .IsRequired();
+                    b.Navigation("LoyaltyProgram");
 
                     b.Navigation("Reviews");
                 });

@@ -14,7 +14,7 @@ namespace CarRentalSystem.Services
     {
         Task<(bool Success, string Token, UserResponseDto User, string ErrorMessage)> Login(UserLoginDto loginDto);
         Task<(bool Success, string ErrorMessage)> Register(UserRegistrationDto registrationDto);
-        Task<(bool Success, string Token, UserResponseDto User, string ErrorMessage)> GoogleLogin(string googleId, string email);
+        Task<(bool Success, string Token, UserResponseDto User, string ErrorMessage)> GoogleLogin(string googleId, string email, string name = null);
         string GenerateJwtToken(User user);
         bool VerifyPassword(string password, string passwordHash);
         string HashPassword(string password);
@@ -45,6 +45,12 @@ namespace CarRentalSystem.Services
             if (user == null)
             {
                 return (false, null, null, "User not found");
+            }
+
+            // Check if user is a Google user (doesn't have a password)
+            if (string.IsNullOrEmpty(user.PasswordHash))
+            {
+                return (false, null, null, "This account uses Google sign-in. Please use the 'Continue with Google' button.");
             }
 
             if (!VerifyPassword(loginDto.Password, user.PasswordHash))
@@ -121,41 +127,162 @@ namespace CarRentalSystem.Services
             return (true, null);
         }
 
-        public async Task<(bool Success, string Token, UserResponseDto User, string ErrorMessage)> GoogleLogin(string googleId, string email)
+        public async Task<(bool Success, string Token, UserResponseDto User, string ErrorMessage)> GoogleLogin(string googleId, string email, string name = null)
         {
-            var user = await _context.Users
-                .Include(u => u.LoyaltyProgram)
-                .FirstOrDefaultAsync(u => u.GoogleId == googleId || u.Email == email);
-
-            if (user == null)
+            try
             {
-                return (false, null, null, "User not registered with Google account");
+                Console.WriteLine($"GoogleLogin called with: GoogleId={googleId}, Email={email}, Name={name}");
+
+                // Validate input parameters
+                if (string.IsNullOrEmpty(googleId) || string.IsNullOrEmpty(email))
+                {
+                    return (false, null, null, "Invalid Google authentication data.");
+                }
+
+                // First, try to find user by GoogleId
+                var user = await _context.Users
+                    .Include(u => u.LoyaltyProgram)
+                    .FirstOrDefaultAsync(u => u.GoogleId == googleId);
+
+                Console.WriteLine($"User found by GoogleId: {user != null}");
+
+                // If not found by GoogleId, try by email
+                if (user == null)
+                {
+                    user = await _context.Users
+                        .Include(u => u.LoyaltyProgram)
+                        .FirstOrDefaultAsync(u => u.Email == email);
+
+                    Console.WriteLine($"User found by Email: {user != null}");
+                }
+
+                // If user exists but doesn't have GoogleId, link the accounts
+                if (user != null && string.IsNullOrEmpty(user.GoogleId))
+                {
+                    Console.WriteLine("Linking existing user with Google account");
+                    user.GoogleId = googleId;
+                    user.IsEmailVerified = true; // Mark as verified since it's from Google
+                    await _context.SaveChangesAsync();
+                }
+
+                // If user doesn't exist, create a new one
+                if (user == null)
+                {
+                    Console.WriteLine("Creating new Google user");
+
+                    // Parse name if provided
+                    string firstName = "Google";
+                    string lastName = "User";
+
+                    if (!string.IsNullOrEmpty(name))
+                    {
+                        var nameParts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                        if (nameParts.Length >= 1)
+                        {
+                            firstName = nameParts[0];
+                        }
+                        if (nameParts.Length >= 2)
+                        {
+                            lastName = string.Join(" ", nameParts.Skip(1));
+                        }
+                    }
+
+                    Console.WriteLine($"Parsed name: FirstName={firstName}, LastName={lastName}");
+
+                    // Create new user for Google authentication
+                    user = new User
+                    {
+                        Email = email,
+                        GoogleId = googleId,
+                        FirstName = firstName,
+                        LastName = lastName,
+                        Role = UserRole.Customer,
+                        RegistrationDate = DateTime.UtcNow,
+                        PasswordHash = null, // Google users don't need a password
+                        IsEmailVerified = true, // Google emails are considered verified
+                        PhoneNumber = null,
+                        Address = null
+                    };
+
+                    try
+                    {
+                        _context.Users.Add(user);
+                        await _context.SaveChangesAsync();
+                        Console.WriteLine($"User created with ID: {user.Id}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error creating user: {ex.Message}");
+                        Console.WriteLine($"Inner exception: {ex.InnerException?.Message}");
+                        return (false, null, null, "Failed to create user account. Please try again.");
+                    }
+
+                    // Create loyalty program for the new user
+                    try
+                    {
+                        var loyaltyProgram = new LoyaltyProgram
+                        {
+                            UserId = user.Id,
+                            Points = 0,
+                            Tier = "Bronze",
+                            LastUpdated = DateTime.UtcNow
+                        };
+
+                        _context.LoyaltyPrograms.Add(loyaltyProgram);
+                        await _context.SaveChangesAsync();
+                        Console.WriteLine("Loyalty program created");
+
+                        // Load the loyalty program for the response
+                        user.LoyaltyProgram = loyaltyProgram;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error creating loyalty program: {ex.Message}");
+                        // Continue without loyalty program for now
+                    }
+
+                    // Send welcome email for new Google users
+                    try
+                    {
+                        await _emailService.SendWelcomeEmailAsync(user);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log the error but don't fail login if email fails
+                        Console.WriteLine($"Failed to send welcome email to Google user: {ex.Message}");
+                    }
+                }
+
+                Console.WriteLine("Generating JWT token");
+                var token = GenerateJwtToken(user);
+
+                var userDto = new UserResponseDto
+                {
+                    Id = user.Id,
+                    Email = user.Email,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    PhoneNumber = user.PhoneNumber,
+                    Address = user.Address,
+                    Role = user.Role.ToString(),
+                    RegistrationDate = user.RegistrationDate,
+                    LoyaltyPoints = user.LoyaltyProgram?.Points ?? 0,
+                    LoyaltyTier = user.LoyaltyProgram?.Tier ?? "None"
+                };
+
+                Console.WriteLine("Google login successful");
+                return (true, token, userDto, null);
             }
-
-            if (user.GoogleId == null)
+            catch (Exception ex)
             {
-                // Update user with Google ID
-                user.GoogleId = googleId;
-                await _context.SaveChangesAsync();
+                Console.WriteLine($"Google login error: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                return (false, null, null, $"Authentication error: {ex.Message}");
             }
-
-            var token = GenerateJwtToken(user);
-
-            var userDto = new UserResponseDto
-            {
-                Id = user.Id,
-                Email = user.Email,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                PhoneNumber = user.PhoneNumber,
-                Address = user.Address,
-                Role = user.Role.ToString(),
-                RegistrationDate = user.RegistrationDate,
-                LoyaltyPoints = user.LoyaltyProgram?.Points ?? 0,
-                LoyaltyTier = user.LoyaltyProgram?.Tier ?? "None"
-            };
-
-            return (true, token, userDto, null);
         }
 
         public string GenerateJwtToken(User user)
@@ -219,6 +346,17 @@ namespace CarRentalSystem.Services
                 var hashBytes = pbkdf2.GetBytes(32);
                 return $"{iterations}:{Convert.ToBase64String(salt)}:{Convert.ToBase64String(hashBytes)}";
             }
+        }
+
+        private string GenerateRandomPassword()
+        {
+            // Generate a random password for Google users (they won't use it anyway)
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+            var random = new Random();
+            var password = new string(Enumerable.Repeat(chars, 12)
+                .Select(s => s[random.Next(s.Length)]).ToArray());
+
+            return HashPassword(password);
         }
     }
 }

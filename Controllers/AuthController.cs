@@ -43,7 +43,7 @@ namespace CarRentalSystem.Controllers
         [HttpPost("google-login")]
         public async Task<ActionResult> GoogleLogin([FromBody] GoogleLoginDto googleLogin)
         {
-            var result = await _authService.GoogleLogin(googleLogin.GoogleId, googleLogin.Email);
+            var result = await _authService.GoogleLogin(googleLogin.GoogleId, googleLogin.Email, googleLogin.Name);
 
             if (!result.Success)
                 return BadRequest(result.ErrorMessage);
@@ -56,5 +56,6 @@ namespace CarRentalSystem.Controllers
     {
         public string GoogleId { get; set; }
         public string Email { get; set; }
+        public string Name { get; set; }
     }
 }
