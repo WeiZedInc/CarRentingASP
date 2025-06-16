@@ -1,0 +1,74 @@
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: CarRentalSystem
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - carrental-network
+
+  backend:
+    image: weizedinc/carrental-backend:${TAG:-latest}
+    container_name: backend
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=CarRentalSystem;Username=postgres;Password=root
+      - Jwt__Secret=${JWT_SECRET:-YOUR_PRODUCTION_SECRET_KEY_SHOULD_BE_AT_LEAST_128_BITS}
+      - Jwt__Issuer=${JWT_ISSUER:-https://api.yourcarrental.com}
+      - Jwt__Audience=${JWT_AUDIENCE:-https://yourcarrental.com}
+      - ASPNETCORE_URLS=http://+:8080
+      # Dynamic CORS configuration
+      - Cors__AllowedOrigins__0=https://yourcarrental.com
+      - Cors__AllowedOrigins__1=http://yourcarrental.com
+      - Cors__AllowedOrigins__2=https://www.yourcarrental.com
+      - Cors__AllowedOrigins__3=http://www.yourcarrental.com
+      - Cors__AllowedOrigins__4=http://localhost:3000
+      - Cors__AllowedOrigins__5=https://localhost:3000
+    volumes:
+      - ./uploads:/app/Uploads
+      - ./logs:/app/logs
+    networks:
+      - carrental-network
+
+  frontend:
+    image: weizedinc/carrental-frontend:${TAG:-latest}
+    container_name: frontend
+    restart: always
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./ssl:/etc/nginx/ssl
+    networks:
+      - carrental-network
+
+  watchtower:
+    image: containrrr/watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --cleanup --interval 30 backend frontend
+    networks:
+      - carrental-network
+
+volumes:
+  postgres-data:
+    driver: local
+
+networks:
+  carrental-network:
+    driver: bridge
