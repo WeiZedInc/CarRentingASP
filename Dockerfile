@@ -3,7 +3,9 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
 # Copy csproj and restore dependencies
-COPY ["CarRentalSystem.csproj", "./"]
+# Find the .csproj file in the repository (regardless of name)
+COPY ["*.csproj", "./"]
+# Run restore for all found .csproj files
 RUN dotnet restore
 
 # Copy all source code
@@ -36,4 +38,6 @@ RUN mkdir -p /app/logs
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 
-ENTRYPOINT ["dotnet", "CarRentalSystem.dll"]
+# Determine the dll name dynamically (if needed)
+# Otherwise, replace with your actual dll name
+ENTRYPOINT ["dotnet", "CarRentingASP.dll"]
