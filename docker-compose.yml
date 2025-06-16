@@ -36,6 +36,8 @@ services:
       # Dynamic CORS configuration
       - Cors__AllowedOrigins__0=http://95.179.252.239
       - Cors__AllowedOrigins__1=http://localhost:3000
+      - Cors__AllowedOrigins__2=http://localhost
+      - Cors__AllowedOrigins__3=http://frontend
     volumes:
       - ./uploads:/app/Uploads
       - ./logs:/app/logs
@@ -54,6 +56,9 @@ services:
       - ./ssl:/etc/nginx/ssl
     networks:
       - carrental-network
+    # Add environment variable to override API URL in React app at runtime
+    environment:
+      - REACT_APP_API_URL=/api
 
   watchtower:
     image: containrrr/watchtower
