@@ -35,6 +35,4 @@ RUN mkdir -p /app/logs
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 
-# Determine the dll name dynamically (if needed)
-# Otherwise, replace with your actual dll name
 ENTRYPOINT ["dotnet", "CarRentingASP.dll"]
