@@ -263,7 +263,7 @@ namespace CarRentalSystem.Data
                     Color = "Black",
                     Mileage = 8000,
                     DailyRate = 120.00m,
-                    ImageUrl = "https://www.domkrat.by/upload/img_catalog/5-series-sedan/BMW_5_Sedan_G60_12.jpg",
+                    ImageUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/BMW_G60_520i_1X7A2443.jpg/1200px-BMW_G60_520i_1X7A2443.jpg",
                     Description = "Luxurious sedan with cutting-edge technology and premium comfort.",
                     Seats = 5,
                     Transmission = "Automatic",
