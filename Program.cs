@@ -126,12 +126,8 @@ else
     app.UseMiddleware<ErrorHandlingMiddleware>();
 }
 
-// Migrate database and seed data
-if (app.Environment.IsDevelopment())
-{
-    app.MigrateDatabase();
-    app.SeedDatabase();
-}
+app.MigrateDatabase();
+app.SeedDatabase();
 
 app.UseHttpsRedirection();
 
